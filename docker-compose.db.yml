@@ -1,0 +1,44 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: docker-ant-ui-postgres
+    environment:
+      POSTGRES_DB: dockerantui
+      POSTGRES_USER: dockerui
+      POSTGRES_PASSWORD: docker123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - docker-ant-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dockerui -d dockerantui"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: docker-ant-ui-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - docker-ant-network
+    command: redis-server --appendonly yes --requirepass "docker123"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  docker-ant-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:

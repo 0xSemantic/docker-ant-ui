@@ -1,3 +1,4 @@
+// src/hooks/useWebSocket.js
 import { useEffect, useRef, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useActivityLog } from '../context/ActivityLogContext';
@@ -11,13 +12,13 @@ export const useWebSocket = () => {
     if (ws.current?.readyState === WebSocket.OPEN) return;
 
     const socket = new WebSocket('ws://localhost:8080/ws');
-    
+
     socket.onopen = () => {
       console.log('WebSocket connected');
       addLog({
         id: `log-${Date.now()}`,
         type: 'system',
-        message: 'WebSocket connected to Docker Ant UI backend',
+        message: 'Connected to Docker Ant backend',
         container: null,
         timestamp: new Date()
       });
@@ -26,48 +27,61 @@ export const useWebSocket = () => {
     socket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        
+
+        if (data.type === 'init') {
+          queryClient.setQueryData(['containers'], data.containers);
+          queryClient.setQueryData(['images'], data.images);
+          queryClient.setQueryData(['networks'], data.networks);
+          queryClient.setQueryData(['volumes'], data.volumes);
+        }
+
         if (data.type === 'container_update') {
           queryClient.setQueryData(['containers'], data.containers);
-        } else if (data.type === 'container_event') {
+        }
+
+        if (data.type === 'container_created') {
           queryClient.invalidateQueries({ queryKey: ['containers'] });
-          // Add to activity log
           addLog({
             id: `log-${Date.now()}`,
-            type: data.status === 'error' ? 'error' : 'success',
-            message: data.message || `${data.action} ${data.containerId}`,
-            container: data.containerId,
-            timestamp: new Date(data.timestamp * 1000)
+            type: 'success',
+            message: `Container created: ${data.data.name || data.data.id}`,
+            container: data.data.id,
+            timestamp: new Date()
           });
-        } else if (data.type === 'activity_log') {
-          addLog(data.log);
+        }
+
+        if (data.type === 'network_created') {
+          queryClient.invalidateQueries({ queryKey: ['networks'] });
+          addLog({
+            id: `log-${Date.now()}`,
+            type: 'success',
+            message: `Network created: ${data.data.name}`,
+            container: null,
+            timestamp: new Date()
+          });
+        }
+
+        if (data.type === 'volume_created') {
+          queryClient.invalidateQueries({ queryKey: ['volumes'] });
+          addLog({
+            id: `log-${Date.now()}`,
+            type: 'success',
+            message: `Volume created: ${data.data.name}`,
+            container: null,
+            timestamp: new Date()
+          });
+        }
+
+        if (data.type === 'activity_log') {
+          addLog(data.data);
         }
       } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
+        console.error('WebSocket parse error:', error);
       }
     };
 
     socket.onclose = () => {
-      console.log('WebSocket disconnected, reconnecting in 3 seconds...');
-      addLog({
-        id: `log-${Date.now()}`,
-        type: 'warning',
-        message: 'WebSocket disconnected, attempting to reconnect...',
-        container: null,
-        timestamp: new Date()
-      });
       setTimeout(connect, 3000);
-    };
-
-    socket.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      addLog({
-        id: `log-${Date.now()}`,
-        type: 'error',
-        message: `WebSocket error: ${error.message}`,
-        container: null,
-        timestamp: new Date()
-      });
     };
 
     ws.current = socket;
@@ -75,13 +89,6 @@ export const useWebSocket = () => {
 
   useEffect(() => {
     connect();
-    
-    return () => {
-      if (ws.current) {
-        ws.current.close();
-      }
-    };
+    return () => ws.current?.close();
   }, [connect]);
-
-  return { ws: ws.current };
 };

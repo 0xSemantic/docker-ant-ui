@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Docker Ant UI WebSocket Test</title>
+</head>
+<body>
+    <h1>WebSocket Test</h1>
+    <div id="output"></div>
+    
+    <script>
+        const ws = new WebSocket('ws://localhost:8080/ws');
+        const output = document.getElementById('output');
+        
+        ws.onopen = () => {
+            output.innerHTML += '<p>✅ Connected to WebSocket</p>';
+        };
+        
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            output.innerHTML += `<p>📨 Received: ${data.type}</p>`;
+            
+            if (data.type === 'image_event') {
+                output.innerHTML += `<p>🎯 Image Event: ${data.action} - ${data.message}</p>`;
+            }
+            
+            if (data.type === 'image_pull_progress') {
+                output.innerHTML += `<p>📥 Pull Progress: ${JSON.stringify(data.progress)}</p>`;
+            }
+        };
+        
+        ws.onclose = () => {
+            output.innerHTML += '<p>❌ WebSocket disconnected</p>';
+        };
+        
+        ws.onerror = (error) => {
+            output.innerHTML += `<p>⚠️ WebSocket error: ${error.message}</p>`;
+        };
+    </script>
+</body>
+</html>

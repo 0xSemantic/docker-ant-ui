@@ -1,13 +1,13 @@
+// src/lib/api.js
 import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:8080/api';
-
 export const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
 });
 
-// Containers API
+// === UPDATED dockerApi WITH NEW ENDPOINTS ===
 export const dockerApi = {
   // Containers
   getContainers: () => api.get('/containers'),
@@ -15,23 +15,26 @@ export const dockerApi = {
   stopContainer: (id) => api.post(`/containers/${id}/stop`),
   restartContainer: (id) => api.post(`/containers/${id}/restart`),
   deleteContainer: (id) => api.delete(`/containers/${id}`),
-  getContainerLogs: (id) => api.get(`/containers/${id}/logs`),
-  
-  // Activity Logs
-  getActivityLogs: () => api.get('/activity'),
-  
-  // Images (we'll implement these later)
+  createContainer: (data) => api.post('/containers/create', data), // NEW
+
+  // Images
   getImages: () => api.get('/images'),
-  pullImage: (name) => api.post('/images/pull', { name }),
-  removeImage: (id) => api.delete(`/images/${id}`),
+  pullImage: (data) => api.post('/images/pull', data),
+  deleteImage: (id) => api.delete(`/images/${id}`),
+  inspectImage: (id) => api.get(`/images/${id}/inspect`),
+  getImageHistory: (id) => api.get(`/images/${id}/history`),
+  pruneImages: () => api.post('/images/prune'),
   
-  // Networks
+  // Networks - NEW
   getNetworks: () => api.get('/networks'),
-  
-  // Volumes
+  createNetwork: (data) => api.post('/networks', data),
+  deleteNetwork: (id) => api.delete(`/networks/${id}`),
+
+  // Volumes - NEW
   getVolumes: () => api.get('/volumes'),
-  
-  // System
-  getInfo: () => api.get('/info'),
-  getVersion: () => api.get('/version'),
+  createVolume: (data) => api.post('/volumes', data),
+  deleteVolume: (name) => api.delete(`/volumes/${name}`),
+
+  // Activity
+  getActivityLogs: () => api.get('/activity'),
 };
